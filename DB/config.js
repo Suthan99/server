@@ -1,3 +1,3 @@
 module.exports = {
-  dbUrl: "mongodb+srv://it22030894:riya2808@cluster0.0pamjf6.mongodb.net/",
+  dbUrl: "mongodb+srv://suthan1999sivan:Suthan99@cluster0.7ggb7.mongodb.net/",
 };
