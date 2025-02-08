@@ -12,18 +12,13 @@ const addToCartSchema = mongoose.Schema(
     },
     items: [
       {
-        productId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'Product', // Reference to the Product model
-          
-        },
+        productId: { type: Number, required: true },
         quantity: {
-          type: String,
-          
+          type: Number,
           default: 1, // Default quantity is 1
         },
         price: {
-          type: String,
+          type: Number,
           
         },
       },

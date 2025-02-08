@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/authMiddleware'); // Protect middleware
-const { addToCart, getCart,getAllUserCarts } = require('./AddToCard.controller');
+const { addToCart, getCart,getAllUserCarts,removeFromCart } = require('./AddToCard.controller');
 
 // Add an item to the cart (protected)
 router.post('/add', protect, addToCart);
+router.post('/remove', protect, addToCart);
 
 // Get the user's cart (protected)
 router.get('/cart', protect, getCart);

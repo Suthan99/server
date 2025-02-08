@@ -49,82 +49,143 @@ const addToCar2t = asyncHandler(async (req, res) => {
   }
 });
 const addToCart = asyncHandler(async (req, res) => {
-  const userId = req.user._id; // Get user ID from authenticated user
+  const userId = req.user?._id || req.body.userId;
+  let { productId, quantity } = req.body;
 
-  const {  productId, quantity } = req.body;
-console.log(userId,productId, quantity,"-=-=-=-=-=-=-=-=-=-=-=");
+  console.log(userId, productId, quantity, "-=-=-=-=-=-=-=-=-=-=-=");
 
-  // Validate incoming data
   if (!userId || !productId || !quantity) {
     return res.status(400).json({ message: 'userId, productId, and quantity are required.' });
   }
 
-  // Check if the user and product exist
-  const product = productdata.find(item => item.id == productId);
-
-  // const product = await productdata.findById(productId);
-  if (!product) {
-    return res.status(404).json({ message: 'Product not found.' });
-  }
-console.log(product,"0-0-0-0-0-000000000000000000000000");
-
   try {
-    // Find the cart for the user
+    // Convert productId to a number (ensures consistency)
+    productId = parseInt(productId, 10);
+    if (isNaN(productId)) {
+      return res.status(400).json({ message: 'Invalid productId. It must be a number.' });
+    }
+
+    // Find the product in your hardcoded array
+    const product = productdata.find(item => item.id === productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found.' });
+    }
+    console.log(product, "0-0-0-0-0-000000000000000000000000");
+
+    // Find the user's cart
     let cart = await Cart.findOne({ userId });
-console.log(cart,"carttttttttttttt");
+    console.log(cart, "carttttttttttttt");
 
     if (cart) {
-      // If cart exists, check if the product is already in the cart
-      const existingItem = cart.items.find(item => item.productId.toString() === productId);
+      // Check if the product is already in the cart
+      const existingItem = cart.items.find(item => item.productId === productId);
 
       if (existingItem) {
-        // Product already in cart, update the quantity
-        existingItem.quantity += parseInt(quantity); // Convert string to number
+        existingItem.quantity += parseInt((quantity), 10);
         existingItem.price = product.price; // Update price
       } else {
-        // New product, add to the cart
         cart.items.push({ productId, quantity, price: product.price });
       }
-console.log(existingItem,"existingItemexistingItem");
+
+      console.log(existingItem, "existingItemexistingItem");
 
       // Save the updated cart
       await cart.save();
       res.status(200).json(cart);
     } else {
+      console.log("sdsd");
+      
       // If cart doesn't exist, create a new one
       cart = new Cart({
         userId,
         items: [{ productId, quantity, price: product.price }],
       });
       await cart.save();
+
       res.status(201).json(cart);
     }
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Failed to add to cart' });
+    console.error('Error:', error);
+    res.status(500).json({ message: 'Failed to add to cart', error: error.message });
+  }
+});
+
+const removeFromCart = asyncHandler(async (req, res) => {
+  const userId = req.user?._id || req.body.userId;
+  let { productId, quantity } = req.body;
+
+  console.log(userId, productId, quantity, "Removing item from cart -=-=-=-=-=-=-=-=");
+
+  if (!userId || !productId || !quantity) {
+    return res.status(400).json({ message: 'userId, productId, and quantity are required.' });
+  }
+
+  try {
+    // Convert productId to a number (ensures consistency)
+    productId = parseInt(productId, 10);
+    if (isNaN(productId)) {
+      return res.status(400).json({ message: 'Invalid productId. It must be a number.' });
+    }
+
+    // Find the user's cart
+    let cart = await Cart.findOne({ userId });
+    console.log(cart, "carttttttttttttt");
+
+    if (!cart) {
+      return res.status(404).json({ message: 'Cart not found.' });
+    }
+
+    // Find the product in the cart
+    const existingItem = cart.items.find(item => item.productId === productId);
+
+    if (!existingItem) {
+      return res.status(404).json({ message: 'Product not found in cart.' });
+    }
+
+    // Decrease the quantity
+    existingItem.quantity -= parseInt(quantity, 10);
+
+    // If the quantity reaches zero or below, remove the item from the cart
+    if (existingItem.quantity <= 0) {
+      cart.items = cart.items.filter(item => item.productId !== productId);
+      console.log("Item removed from cart.");
+    }
+
+    // Save the updated cart
+    await cart.save();
+    res.status(200).json(cart);
+    
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ message: 'Failed to remove from cart', error: error.message });
   }
 });
 
 // Get the user's cart
 const getCart = asyncHandler(async (req, res) => {
-  const userId = req.user.id; // assuming you are passing the user info from the middleware
-  console.log(userId);
+  const userId = req.user?._id || req.params.userId; // Get userId from auth or request params
 
-  // Check if the cart exists for the user
-  let cartItems = await Cart.findOne({ user: userId })
-    console.log(cartItems, "--------------------------");
+  console.log(userId, "Fetching cart for user -=-=-=-=-=-=-=-=");
 
-  if (!cartItems) {
-    // If no cart exists, create a new cart document for the user
-    cartItems = await Cart.create({
-      userId,
-      products: [], // initialize with an empty array
-    });
-    return res.status(200).json(cartItems.products); // Return an empty array as no items are in the cart
+  if (!userId) {
+    return res.status(400).json({ message: 'User ID is required.' });
   }
 
-  res.status(200).json(cartItems.products); // Return the list of cart items
+  try {
+    // Find the cart for the user
+    const cart = await Cart.findOne({ userId });
+
+    if (!cart || cart.items.length === 0) {
+      return res.status(404).json([{ message: 'Cart is empty.' }]);
+    }
+
+    res.status(200).json(cart);
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ message: 'Failed to fetch cart', error: error.message });
+  }
 });
+
 const getAllUserCarts = asyncHandler(async (req, res) => {
   try {
     // Fetch all carts with populated product details
@@ -157,4 +218,4 @@ console.log(allCarts);
   }
 });
 
-module.exports = { addToCart, getCart,getAllUserCarts };
+module.exports = { addToCart, getCart,getAllUserCarts,removeFromCart };
